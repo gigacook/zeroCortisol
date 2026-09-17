@@ -137,6 +137,56 @@
   }
   .none { color: var(--ink-3); font-size: 13px; line-height: 1.5; }
 
+  .hint {
+    position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 6;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-3);
+    opacity: 0.55; pointer-events: none; white-space: nowrap;
+  }
+  .hint kbd {
+    font-family: var(--sans); font-size: 10px; padding: 1px 6px; margin: 0 4px;
+    border: 1px solid var(--panel-border); border-radius: 4px; color: var(--ink-2);
+  }
+
+  .data-veil {
+    position: fixed; inset: 0; z-index: 5; display: none; align-items: center; justify-content: center;
+    background: rgba(2, 4, 12, 0.55); backdrop-filter: blur(6px); padding: 40px;
+  }
+  .data-veil.show { display: flex; }
+  .data {
+    --hue: 44;
+    position: relative; width: min(980px, 100%); max-height: 100%; overflow: auto;
+    padding: 26px 28px 24px; border-radius: 4px;
+    background:
+      radial-gradient(140% 90% at 50% 0%, hsla(var(--hue), 60%, 30%, 0.45), transparent 70%),
+      linear-gradient(180deg, #0b1330, #070b1c);
+    border: 1px solid hsla(var(--hue), 55%, 70%, 0.35);
+    box-shadow: inset 0 0 0 4px #070b1c, inset 0 0 0 5px hsla(var(--hue), 55%, 70%, 0.25), 0 20px 50px rgba(0, 0, 0, 0.5);
+  }
+  .data .eyebrow {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.26em; text-align: center; color: hsl(var(--hue), 70%, 78%);
+  }
+  .data h2 { margin: 8px 0 10px; font-family: var(--serif); font-weight: 400; font-size: 28px; text-align: center; }
+  .data .rule {
+    height: 1px; margin: 0 auto 18px; width: 40%;
+    background: linear-gradient(90deg, transparent, hsla(var(--hue), 60%, 75%, 0.6), transparent);
+  }
+  .data .figures { display: flex; justify-content: center; gap: 44px; margin-bottom: 18px; }
+  .data .figure { text-align: center; }
+  .data .figure b { display: block; font-family: var(--serif); font-weight: 400; font-size: 30px; color: var(--ink); }
+  .data .figure span { font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .data .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .data .card {
+    padding: 12px 14px 10px; border: 1px solid var(--panel-border); border-radius: 4px; background: rgba(3, 6, 15, 0.45);
+  }
+  .data .card.wide { grid-column: 1 / -1; }
+  .data .card h3 {
+    margin: 0 0 6px; font-size: 10px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3);
+  }
+  .data svg { display: block; width: 100%; height: auto; }
+  .data .keys { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; font-size: 11px; color: var(--ink-2); }
+  .data .keys i { display: inline-block; width: 14px; height: 2px; margin-right: 6px; vertical-align: middle; }
+  .data .keys i.dash { background: none; border-top: 2px dashed; height: 0; }
+
   @media (max-width: 760px) {
     body { overflow: auto; }
     .layout { grid-template-columns: 1fr; grid-template-rows: 70vh auto; height: auto; }
@@ -181,6 +231,16 @@
     <div id="posters"></div>
   </aside>
 </div>
+
+<div class="data-veil" id="dataVeil">
+  <section class="data" aria-labelledby="dataTitle">
+    <div class="eyebrow">Your record</div>
+    <h2 id="dataTitle">Data</h2>
+    <div class="rule"></div>
+    <div id="dataBody"></div>
+  </section>
+</div>
+<div class="hint" aria-hidden="true"><kbd>esc</kbd> exit &nbsp;·&nbsp; <kbd>d</kbd> data</div>
 
 <script src="data.js"></script>
 <script>
@@ -617,7 +677,139 @@
     view.k = k;
     requestDraw();
   }, { passive: false });
-  window.addEventListener("keydown", function (e) { if (e.key === "Escape") showDetail(null); });
+  // ---------- data overlay (D) ----------
+  var logs = Array.isArray(DATA.logs) ? DATA.logs : [];
+  var traj = DATA.trajectory || { actual: [], smoothed: [], projection: [] };
+  var dataVeil = document.getElementById("dataVeil");
+  var dataBody = document.getElementById("dataBody");
+  var SVGNS = "http://www.w3.org/2000/svg";
+
+  function svgEl(tag, attrs) {
+    var e = document.createElementNS(SVGNS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function dayMs(key) { return Date.parse(key + "T00:00:00Z"); }
+
+  // series: [{points: [{date, value}], color, dashed, dots}]
+  function chart(series, yMin, yMax, height) {
+    var Wc = 900, Hc = height, padL = 30, padR = 12, padT = 10, padB = 22;
+    var svg = svgEl("svg", { viewBox: "0 0 " + Wc + " " + Hc, role: "img" });
+    var all = [];
+    series.forEach(function (s) { s.points.forEach(function (p) { all.push(dayMs(p.date)); }); });
+    var x0 = Math.min.apply(null, all), x1 = Math.max.apply(null, all);
+    if (x0 === x1) { x0 -= 86400000; x1 += 86400000; }
+    function X(ms) { return padL + (ms - x0) / (x1 - x0) * (Wc - padL - padR); }
+    function Y(v) { return padT + (1 - (v - yMin) / (yMax - yMin)) * (Hc - padT - padB); }
+    [yMin, (yMin + yMax) / 2, yMax].forEach(function (v) {
+      svg.appendChild(svgEl("line", { x1: padL, x2: Wc - padR, y1: Y(v), y2: Y(v), stroke: "rgba(170,190,230,0.12)" }));
+      var t = svgEl("text", { x: padL - 6, y: Y(v) + 4, "text-anchor": "end", "font-size": 11, fill: "#6f7a95" });
+      t.textContent = Math.round(v);
+      svg.appendChild(t);
+    });
+    [x0, x1].forEach(function (ms, i) {
+      var t = svgEl("text", { x: X(ms), y: Hc - 4, "text-anchor": i ? "end" : "start", "font-size": 11, fill: "#6f7a95" });
+      t.textContent = new Date(ms).toISOString().slice(5, 10);
+      svg.appendChild(t);
+    });
+    series.forEach(function (s) {
+      if (!s.points.length) return;
+      var d = s.points.map(function (p, i) { return (i ? "L" : "M") + X(dayMs(p.date)).toFixed(1) + " " + Y(p.value).toFixed(1); }).join(" ");
+      if (s.points.length > 1 && !s.dotsOnly) {
+        var path = svgEl("path", { d: d, fill: "none", stroke: s.color, "stroke-width": s.width || 2, "stroke-linejoin": "round", "stroke-linecap": "round" });
+        if (s.dashed) path.setAttribute("stroke-dasharray", "6 5");
+        svg.appendChild(path);
+      }
+      if (s.dots || s.points.length === 1) {
+        s.points.forEach(function (p) {
+          svg.appendChild(svgEl("circle", { cx: X(dayMs(p.date)), cy: Y(p.value), r: 2.8, fill: s.color }));
+        });
+      }
+    });
+    return svg;
+  }
+
+  function keys(items) {
+    var row = el("div", "keys");
+    items.forEach(function (k) {
+      var span = el("span");
+      var sw = el("i", k.dashed ? "dash" : null);
+      if (k.dashed) sw.style.borderColor = k.color; else sw.style.background = k.color;
+      span.appendChild(sw);
+      span.appendChild(document.createTextNode(k.label));
+      row.appendChild(span);
+    });
+    return row;
+  }
+
+  function card(title, svg, keyRow, wide) {
+    var c = el("div", "card" + (wide ? " wide" : ""));
+    c.appendChild(el("h3", null, title));
+    c.appendChild(svg);
+    if (keyRow) c.appendChild(keyRow);
+    return c;
+  }
+
+  function renderData() {
+    dataBody.textContent = "";
+    var figures = el("div", "figures");
+    var latest = logs.length ? logs[logs.length - 1].composite : null;
+    [[DATA.streak || 0, "Streak"], [DATA.total || logs.length, "Days logged"], [latest == null ? "–" : latest, "Latest composite"]]
+      .forEach(function (f) {
+        var d = el("div", "figure");
+        d.appendChild(el("b", null, String(f[0])));
+        d.appendChild(el("span", null, f[1]));
+        figures.appendChild(d);
+      });
+    dataBody.appendChild(figures);
+    if (!logs.length) {
+      dataBody.appendChild(el("p", "none", "No check-ins yet. Lock in mood, sleep, strength and stillness from the menu bar."));
+      return;
+    }
+    var charts = el("div", "charts");
+    var composite = logs.map(function (l) { return { date: l.date, value: l.composite }; });
+    charts.appendChild(card("Composite wellbeing",
+      chart([{ points: composite, color: "#f1cf7d", dots: true, width: 2.2 }], 6, 54, 200),
+      keys([{ label: "Mood×1 + Sleep×1 + Strength×2 + Stillness×2", color: "#f1cf7d" }]), true));
+
+    var metrics = [
+      { key: "mood", label: "Mood (1x)", color: "#8fc1ff" },
+      { key: "sleep", label: "Sleep (1x)", color: "#b79cff" },
+      { key: "strength", label: "Strength (2x)", color: "#f59e7a" },
+      { key: "stillness", label: "Stillness (2x)", color: "#7fe0c2" }
+    ];
+    charts.appendChild(card("Split scores",
+      chart(metrics.map(function (m) {
+        return { points: logs.map(function (l) { return { date: l.date, value: l[m.key] }; }), color: m.color, width: 1.8 };
+      }), 1, 9, 220),
+      keys(metrics)));
+
+    charts.appendChild(card("Current trajectory",
+      chart([
+        { points: traj.actual || [], color: "rgba(232,236,246,0.75)", dotsOnly: true, dots: true },
+        { points: traj.smoothed || [], color: "#f1cf7d", width: 2.2 },
+        { points: traj.projection || [], color: "#8fc1ff", dashed: true, width: 2 }
+      ], 6, 54, 220),
+      keys([
+        { label: "Actual", color: "rgba(232,236,246,0.75)" },
+        { label: "Smoothed", color: "#f1cf7d" },
+        { label: "7-day projection", color: "#8fc1ff", dashed: true }
+      ])));
+    dataBody.appendChild(charts);
+  }
+
+  function toggleData(force) {
+    var open = force == null ? !dataVeil.classList.contains("show") : force;
+    if (open) renderData();
+    dataVeil.classList.toggle("show", open);
+  }
+  dataVeil.addEventListener("click", function (e) { if (e.target === dataVeil) toggleData(false); });
+
+  window.addEventListener("keydown", function (e) {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "d" || e.key === "D") { e.preventDefault(); toggleData(); }
+    else if (e.key === "Escape") { toggleData(false); showDetail(null); }
+  });
 })();
 </script>
 </body>

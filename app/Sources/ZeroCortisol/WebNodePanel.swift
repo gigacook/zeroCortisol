@@ -1,57 +1,70 @@
 import AppKit
 import WebKit
 
-/// Always-on-top panel that shows the constellation page next to the menu bar flyout.
+/// Borderless windows refuse key status by default; the node view needs keys (Esc, D).
+private final class NodeWindow: NSWindow {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { true }
+}
+
+/// Full-screen constellation view. Esc closes it (and the dashboard) instantly.
 @MainActor
-final class WebNodePanel: NSObject, NSWindowDelegate {
+final class WebNodePanel: NSObject {
     static let shared = WebNodePanel()
 
-    private var panel: NSPanel?
+    private var window: NSWindow?
     private var webView: WKWebView?
+    private var keyMonitor: Any?
 
     func show(_ url: URL) {
-        let panel = self.panel ?? makePanel()
+        let window = self.window ?? makeWindow()
+        let screen = NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main
+        if let screen { window.setFrame(screen.frame, display: true) }
         webView?.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-        if !panel.isVisible { position(panel) }
-        panel.orderFrontRegardless()
-        panel.makeKey()
+        NSApp.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.makeFirstResponder(webView)
+        installKeyMonitor()
     }
 
-    private func makePanel() -> NSPanel {
-        let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 1040, height: 680),
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        panel.title = "Web Node"
-        panel.titlebarAppearsTransparent = true
-        panel.isFloatingPanel = true
-        panel.level = .floating
-        panel.hidesOnDeactivate = false
-        panel.isReleasedWhenClosed = false
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        panel.minSize = NSSize(width: 720, height: 460)
-        panel.backgroundColor = NSColor(red: 0.01, green: 0.02, blue: 0.06, alpha: 1)
-        panel.delegate = self
+    /// Closes the node view and every other open zeroCortisol window.
+    func closeAll() {
+        removeKeyMonitor()
+        window?.orderOut(nil)
+        for other in NSApp.windows where other.identifier?.rawValue.contains("dashboard") == true {
+            other.close()
+        }
+    }
 
-        let webView = WKWebView(frame: panel.contentView?.bounds ?? .zero)
+    private func makeWindow() -> NSWindow {
+        let window = NodeWindow(contentRect: .zero, styleMask: [.borderless], backing: .buffered, defer: false)
+        window.level = .statusBar
+        window.isReleasedWhenClosed = false
+        window.hidesOnDeactivate = false
+        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary]
+        window.backgroundColor = NSColor(red: 0.01, green: 0.02, blue: 0.06, alpha: 1)
+
+        let webView = WKWebView(frame: .zero)
         webView.autoresizingMask = [.width, .height]
         webView.setValue(false, forKey: "drawsBackground")
-        panel.contentView?.addSubview(webView)
+        window.contentView = webView
 
-        self.panel = panel
+        self.window = window
         self.webView = webView
-        return panel
+        return window
     }
 
-    /// Top-right of the screen, just under the menu bar, left of where the flyout drops down.
-    private func position(_ panel: NSPanel) {
-        guard let screen = NSScreen.main else { panel.center(); return }
-        let visible = screen.visibleFrame
-        let size = panel.frame.size
-        let x = max(visible.minX + 12, visible.maxX - size.width - 380)
-        let y = visible.maxY - size.height - 8
-        panel.setFrameOrigin(NSPoint(x: x, y: y))
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard event.keyCode == 53 else { return event } // Esc
+            MainActor.assumeIsolated { self?.closeAll() }
+            return nil
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+        keyMonitor = nil
     }
 }

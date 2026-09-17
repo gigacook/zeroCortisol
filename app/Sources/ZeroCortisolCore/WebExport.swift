@@ -24,11 +24,35 @@ public struct WebPayload: Codable, Sendable {
         public let quoteCount: Int
     }
 
+    public struct LogRow: Codable, Sendable {
+        public let date: String
+        public let mood: Int
+        public let sleep: Int
+        public let strength: Int
+        public let stillness: Int
+        public let composite: Int
+    }
+
+    public struct Point: Codable, Sendable {
+        public let date: String
+        public let value: Double
+    }
+
+    public struct TrajectoryNode: Codable, Sendable {
+        public let actual: [Point]
+        public let smoothed: [Point]
+        public let projection: [Point]
+    }
+
     public let generatedAt: String
     public let pins: [PinNode]
     public let authors: [AuthorNode]
     public let works: [WorkNode]
     public let recommendations: [Poster]
+    public let logs: [LogRow]
+    public let trajectory: TrajectoryNode
+    public let streak: Int
+    public let total: Int
 }
 
 public enum WebExport {
@@ -41,9 +65,21 @@ public enum WebExport {
         let works = try store.workPinCounts().map {
             WebPayload.WorkNode(author: $0.author, title: $0.work, pinCount: $0.pinCount, quoteCount: $0.quoteCount)
         }
+        let logs = try store.logs()
+        let rows = logs.map {
+            WebPayload.LogRow(date: $0.date, mood: $0.mood, sleep: $0.sleep, strength: $0.strength,
+                              stillness: $0.stillness, composite: $0.composite)
+        }
+        let result = Trajectory.compute(logs)
+        func points(_ list: [TrajectoryPoint]) -> [WebPayload.Point] {
+            list.map { WebPayload.Point(date: $0.dateKey, value: $0.value) }
+        }
+        let trajectory = WebPayload.TrajectoryNode(actual: points(result.actual), smoothed: points(result.smoothed),
+                                                   projection: points(result.projection))
         let formatter = ISO8601DateFormatter()
         return WebPayload(generatedAt: formatter.string(from: now), pins: pins, authors: authors, works: works,
-                          recommendations: try store.recommendations())
+                          recommendations: try store.recommendations(), logs: rows, trajectory: trajectory,
+                          streak: try store.streak(today: DayKey.key(for: now)), total: logs.count)
     }
 
     /// JavaScript source assigning the payload to `window.ZC_DATA`.

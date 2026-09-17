@@ -161,7 +161,7 @@ final class AppModel {
         return url
     }
 
-    /// Exports the constellation page and shows it in a floating panel.
+    /// Exports the constellation page and shows it full screen.
     func openWebNode() {
         guard let url = exportWebNode() else { return }
         WebNodePanel.shared.show(url)
