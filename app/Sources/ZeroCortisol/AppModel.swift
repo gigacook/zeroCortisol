@@ -161,12 +161,10 @@ final class AppModel {
         return url
     }
 
-    /// Exports and opens the constellation page in the default browser.
+    /// Exports the constellation page and shows it in a floating panel.
     func openWebNode() {
         guard let url = exportWebNode() else { return }
-        if !NSWorkspace.shared.open(url) {
-            lastError = "Could not open \(url.path)"
-        }
+        WebNodePanel.shared.show(url)
     }
 
     // MARK: - Menu bar images
