@@ -1,0 +1,31 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Swift / Xcode
+.build/
+.swiftpm/
+xcuserdata/
+DerivedData/
+*.xcodeproj/project.xcworkspace/
+Package.resolved
+
+# Build output
+dist/
+
+# Local databases
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+
+# Private, local-only material (never pushed)
+source/
+build/
+private/
+__pycache__/
+*.pyc

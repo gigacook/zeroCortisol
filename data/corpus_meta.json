@@ -1,0 +1,224 @@
+{
+  "authors": [
+    {
+      "name": "Ecclesiastes (KJV)",
+      "works": [
+        {
+          "title": "Ecclesiastes",
+          "source_file": "source/01b_Ecclesiastes_KJV.md",
+          "quote_count": 22
+        }
+      ]
+    },
+    {
+      "name": "Epictetus",
+      "works": [
+        {
+          "title": "Discourses",
+          "source_file": "source/02_Epictetus_Discourses.md",
+          "quote_count": 49
+        },
+        {
+          "title": "Enchiridion",
+          "source_file": "source/02_Epictetus_Discourses.md",
+          "quote_count": 25
+        }
+      ]
+    },
+    {
+      "name": "Marcus Aurelius",
+      "works": [
+        {
+          "title": "Meditations",
+          "source_file": "source/03_MarcusAurelius_Meditations.md",
+          "quote_count": 48
+        }
+      ]
+    },
+    {
+      "name": "Socrates",
+      "works": [
+        {
+          "title": "Apology",
+          "source_file": "source/05_Plato_Apology.md",
+          "quote_count": 13
+        },
+        {
+          "title": "Crito",
+          "source_file": "source/06_Plato_Crito.md",
+          "quote_count": 8
+        },
+        {
+          "title": "Phaedo",
+          "source_file": "source/07_Plato_Phaedo.md",
+          "quote_count": 12
+        }
+      ]
+    },
+    {
+      "name": "Plato",
+      "works": [
+        {
+          "title": "The Republic",
+          "source_file": "source/04_Plato_Republic.md",
+          "quote_count": 12
+        },
+        {
+          "title": "Symposium",
+          "source_file": "source/08_Plato_Symposium.md",
+          "quote_count": 6
+        }
+      ]
+    },
+    {
+      "name": "Fyodor Dostoevsky",
+      "works": [
+        {
+          "title": "Notes from Underground",
+          "source_file": "source/09_Dostoevsky_NotesFromUnderground.md",
+          "quote_count": 15
+        },
+        {
+          "title": "The Brothers Karamazov",
+          "source_file": "source/10_Dostoevsky_BrothersKaramazov.md",
+          "quote_count": 17
+        },
+        {
+          "title": "Crime and Punishment",
+          "source_file": "source/11_Dostoevsky_CrimeAndPunishment.md",
+          "quote_count": 11
+        },
+        {
+          "title": "White Nights",
+          "source_file": "source/12_Dostoevsky_WhiteNights.md",
+          "quote_count": 3
+        },
+        {
+          "title": "A Faint Heart",
+          "source_file": "source/12_Dostoevsky_WhiteNights.md",
+          "quote_count": 3
+        },
+        {
+          "title": "A Christmas Tree and a Wedding",
+          "source_file": "source/12_Dostoevsky_WhiteNights.md",
+          "quote_count": 1
+        },
+        {
+          "title": "Polzunkov",
+          "source_file": "source/12_Dostoevsky_WhiteNights.md",
+          "quote_count": 1
+        },
+        {
+          "title": "A Little Hero",
+          "source_file": "source/12_Dostoevsky_WhiteNights.md",
+          "quote_count": 3
+        },
+        {
+          "title": "Mr. Prohartchin",
+          "source_file": "source/12_Dostoevsky_WhiteNights.md",
+          "quote_count": 2
+        }
+      ]
+    },
+    {
+      "name": "Leo Tolstoy",
+      "works": [
+        {
+          "title": "Anna Karenina",
+          "source_file": "source/14_Tolstoy_AnnaKarenina.md",
+          "quote_count": 9
+        },
+        {
+          "title": "War and Peace",
+          "source_file": "source/15_Tolstoy_WarAndPeace.md",
+          "quote_count": 17
+        }
+      ]
+    },
+    {
+      "name": "Søren Kierkegaard",
+      "works": [
+        {
+          "title": "Either/Or: Diapsalmata",
+          "source_file": "source/16_Kierkegaard_Selections.md",
+          "quote_count": 5
+        },
+        {
+          "title": "Stages on Life's Way: In Vino Veritas",
+          "source_file": "source/16_Kierkegaard_Selections.md",
+          "quote_count": 2
+        },
+        {
+          "title": "Fear and Trembling",
+          "source_file": "source/16_Kierkegaard_Selections.md",
+          "quote_count": 15
+        },
+        {
+          "title": "Preparation for a Christian Life",
+          "source_file": "source/16_Kierkegaard_Selections.md",
+          "quote_count": 4
+        },
+        {
+          "title": "The Present Moment",
+          "source_file": "source/16_Kierkegaard_Selections.md",
+          "quote_count": 2
+        }
+      ]
+    },
+    {
+      "name": "Franz Kafka",
+      "works": [
+        {
+          "title": "The Metamorphosis",
+          "source_file": "source/17_Kafka_Metamorphosis.md",
+          "quote_count": 7
+        },
+        {
+          "title": "The Trial",
+          "source_file": "source/18_Kafka_Trial.md",
+          "quote_count": 11
+        }
+      ]
+    },
+    {
+      "name": "Niccolò Machiavelli",
+      "works": [
+        {
+          "title": "The Prince",
+          "source_file": "source/19_Machiavelli_Prince.md",
+          "quote_count": 11
+        },
+        {
+          "title": "The Life of Castruccio Castracani",
+          "source_file": "source/19_Machiavelli_Prince.md",
+          "quote_count": 3
+        },
+        {
+          "title": "Discourses on Livy",
+          "source_file": "source/20_Machiavelli_DiscoursesLivy.md",
+          "quote_count": 10
+        }
+      ]
+    },
+    {
+      "name": "Friedrich Nietzsche",
+      "works": [
+        {
+          "title": "Thus Spake Zarathustra",
+          "source_file": "source/21_Nietzsche_Zarathustra.md",
+          "quote_count": 31
+        },
+        {
+          "title": "Beyond Good and Evil",
+          "source_file": "source/22_Nietzsche_BeyondGoodAndEvil.md",
+          "quote_count": 19
+        },
+        {
+          "title": "The Genealogy of Morals",
+          "source_file": "source/23_Nietzsche_GenealogyOfMorals.md",
+          "quote_count": 10
+        }
+      ]
+    }
+  ]
+}

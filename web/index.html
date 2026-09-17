@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zeroCortisol Constellation</title>
+<style>
+  :root {
+    --sea-0: #03060f;
+    --sea-1: #07102a;
+    --sea-2: #0d1d44;
+    --ink: #e8ecf6;
+    --ink-2: #aab4cc;
+    --ink-3: #6f7a95;
+    --gold: #f1cf7d;
+    --gold-dim: rgba(241, 207, 125, 0.28);
+    --work: #8fc1ff;
+    --star: #ffffff;
+    --panel: rgba(8, 14, 34, 0.78);
+    --panel-border: rgba(170, 190, 230, 0.16);
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: radial-gradient(120% 90% at 35% 20%, var(--sea-2) 0%, var(--sea-1) 45%, var(--sea-0) 100%) fixed;
+    color: var(--ink);
+    font-family: var(--sans);
+    overflow: hidden;
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 360px;
+    height: 100vh;
+  }
+  .sky { position: relative; min-width: 0; overflow: hidden; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+  canvas.dragging { cursor: grabbing; }
+  canvas.pointing { cursor: pointer; }
+
+  .masthead {
+    position: absolute; top: 20px; left: 24px; right: 24px;
+    pointer-events: none;
+  }
+  .masthead h1 {
+    margin: 0; font-family: var(--serif); font-weight: 400; font-size: 26px; letter-spacing: 0.02em;
+  }
+  .masthead p { margin: 4px 0 0; color: var(--ink-2); font-size: 13px; }
+  .legend {
+    position: absolute; left: 24px; bottom: 20px; display: flex; gap: 16px; flex-wrap: wrap;
+    font-size: 12px; color: var(--ink-2); pointer-events: none;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .dot.author { background: var(--gold); box-shadow: 0 0 8px var(--gold); }
+  .dot.work { background: var(--work); width: 8px; height: 8px; }
+  .dot.pin { background: var(--star); width: 5px; height: 5px; box-shadow: 0 0 6px #fff; }
+
+  .tooltip {
+    position: absolute; pointer-events: none; max-width: 300px; padding: 8px 10px;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px;
+    font-size: 12px; line-height: 1.45; color: var(--ink); backdrop-filter: blur(8px);
+    opacity: 0; transition: opacity 120ms ease; z-index: 3;
+  }
+  .tooltip.show { opacity: 1; }
+  .tooltip .kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--ink-3); }
+  .tooltip .title { font-weight: 600; }
+  .tooltip .muted { color: var(--ink-2); }
+
+  .detail {
+    position: absolute; right: 20px; bottom: 20px; width: min(420px, calc(100% - 40px));
+    max-height: min(60%, 420px); overflow: auto; padding: 16px 18px;
+    background: var(--panel); border: 1px solid var(--panel-border); border-radius: 12px;
+    backdrop-filter: blur(10px); display: none; z-index: 2;
+  }
+  .detail.show { display: block; }
+  .detail .kind { font-size: 10px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-3); }
+  .detail blockquote { margin: 8px 0 10px; font-family: var(--serif); font-size: 16px; line-height: 1.55; }
+  .detail h2 { margin: 6px 0 4px; font-family: var(--serif); font-weight: 400; font-size: 20px; }
+  .detail .meta { color: var(--ink-2); font-size: 12px; }
+  .detail .chips { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--panel-border); color: var(--ink-2); }
+  .chip.tag { color: var(--gold); border-color: var(--gold-dim); }
+  .detail ul { margin: 8px 0 0; padding-left: 18px; color: var(--ink-2); font-size: 13px; line-height: 1.6; }
+  .close {
+    position: absolute; top: 8px; right: 10px; background: none; border: 0; color: var(--ink-3);
+    font-size: 18px; cursor: pointer; line-height: 1;
+  }
+  .close:hover { color: var(--ink); }
+
+  .empty {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; pointer-events: none;
+  }
+  .empty.show { display: flex; }
+  .empty h2 { font-family: var(--serif); font-weight: 400; font-size: 24px; margin: 0 0 8px; }
+  .empty p { color: var(--ink-2); max-width: 420px; margin: 0 auto; line-height: 1.5; font-size: 14px; }
+
+  aside {
+    border-left: 1px solid var(--panel-border);
+    background: linear-gradient(180deg, rgba(5, 9, 22, 0.72), rgba(3, 6, 15, 0.9));
+    overflow-y: auto; padding: 22px 20px 28px;
+  }
+  aside h2 {
+    margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3);
+  }
+  aside .sub { margin: 6px 0 18px; color: var(--ink-2); font-size: 13px; line-height: 1.45; }
+  .poster {
+    position: relative; margin: 0 0 16px; padding: 20px 18px 16px;
+    border-radius: 4px;
+    background:
+      radial-gradient(140% 90% at 50% 0%, hsla(var(--hue), 60%, 30%, 0.55), transparent 70%),
+      linear-gradient(180deg, #0b1330, #070b1c);
+    border: 1px solid hsla(var(--hue), 55%, 70%, 0.35);
+    box-shadow: inset 0 0 0 4px #070b1c, inset 0 0 0 5px hsla(var(--hue), 55%, 70%, 0.25), 0 10px 24px rgba(0, 0, 0, 0.35);
+  }
+  .poster .author {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.26em; text-align: center;
+    color: hsl(var(--hue), 70%, 78%);
+  }
+  .poster .work {
+    margin: 10px 0 12px; font-family: var(--serif); font-size: 24px; line-height: 1.15; text-align: center;
+    color: var(--ink);
+  }
+  .poster .rule {
+    height: 1px; margin: 0 auto 12px; width: 60%;
+    background: linear-gradient(90deg, transparent, hsla(var(--hue), 60%, 75%, 0.6), transparent);
+  }
+  .poster .teaser {
+    margin: 0; font-family: var(--serif); font-style: italic; font-size: 13.5px; line-height: 1.5; color: var(--ink-2);
+    display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .poster .foot {
+    margin-top: 12px; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-3); text-align: center;
+  }
+  .none { color: var(--ink-3); font-size: 13px; line-height: 1.5; }
+
+  @media (max-width: 760px) {
+    body { overflow: auto; }
+    .layout { grid-template-columns: 1fr; grid-template-rows: 70vh auto; height: auto; }
+    aside { border-left: 0; border-top: 1px solid var(--panel-border); padding: 20px 16px; }
+    .masthead { left: 16px; right: 16px; }
+    .legend { left: 16px; }
+    .detail { right: 16px; bottom: 16px; width: calc(100% - 32px); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tooltip { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <main class="sky" id="sky">
+    <canvas id="canvas" aria-label="Constellation of pinned quotes: authors, works and pins"></canvas>
+    <header class="masthead">
+      <h1>Constellation</h1>
+      <p id="stats">Loading…</p>
+    </header>
+    <div class="legend" aria-hidden="true">
+      <span><i class="dot author"></i>Author</span>
+      <span><i class="dot work"></i>Work</span>
+      <span><i class="dot pin"></i>Pinned quote</span>
+    </div>
+    <div class="empty" id="empty">
+      <div>
+        <h2 id="emptyTitle">No stars yet</h2>
+        <p id="emptyText">Pin a Truth of the Day from the menu bar and open the Web Node again. Each pin becomes a star, linked to its work and author.</p>
+      </div>
+    </div>
+    <div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
+    <section class="detail" id="detail" aria-live="polite">
+      <button class="close" id="closeDetail" aria-label="Close details">×</button>
+      <div id="detailBody"></div>
+    </section>
+  </main>
+  <aside aria-labelledby="postersTitle">
+    <h2 id="postersTitle">Recommended readings</h2>
+    <p class="sub">Works you have not pinned yet, from the authors you pin most.</p>
+    <div id="posters"></div>
+  </aside>
+</div>
+
+<script src="data.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var DATA = window.ZC_DATA;
+  var hasData = !!(DATA && typeof DATA === "object");
+  if (!hasData) DATA = { pins: [], authors: [], works: [], recommendations: [] };
+  var pins = Array.isArray(DATA.pins) ? DATA.pins : [];
+  var authorsData = Array.isArray(DATA.authors) ? DATA.authors : [];
+  var worksData = Array.isArray(DATA.works) ? DATA.works : [];
+  var posters = Array.isArray(DATA.recommendations) ? DATA.recommendations : [];
+
+  var reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------- helpers ----------
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+  function hueFor(name) {
+    var h = 0;
+    for (var i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+    return h % 360;
+  }
+  function truncate(s, n) {
+    s = String(s || "");
+    return s.length > n ? s.slice(0, n - 1).trimEnd() + "…" : s;
+  }
+  function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
+
+  // ---------- posters ----------
+  (function renderPosters() {
+    var host = document.getElementById("posters");
+    if (!posters.length) {
+      host.appendChild(el("p", "none", pins.length
+        ? "You have pinned from every work of your pinned authors. Nothing left to recommend."
+        : "Posters appear once you pin a few quotes."));
+      return;
+    }
+    posters.forEach(function (p) {
+      var card = el("article", "poster");
+      card.style.setProperty("--hue", hueFor(p.author));
+      card.appendChild(el("div", "author", p.author));
+      card.appendChild(el("div", "work", p.work));
+      card.appendChild(el("div", "rule"));
+      if (p.teaserQuote) card.appendChild(el("p", "teaser", "“" + p.teaserQuote + "”"));
+      else card.appendChild(el("p", "teaser", "No excerpt in the corpus yet."));
+      card.appendChild(el("div", "foot", plural(p.authorPinCount, "pin") + " from this author"));
+      host.appendChild(card);
+    });
+  })();
+
+  // ---------- graph model ----------
+  var nodes = [], links = [], byId = {};
+  function addNode(n) { byId[n.id] = n; nodes.push(n); return n; }
+
+  var pinCountByAuthor = {};
+  authorsData.forEach(function (a) { pinCountByAuthor[a.name] = a.pinCount; });
+  var workInfo = {};
+  worksData.forEach(function (w) { workInfo[w.author + " " + w.title] = w; });
+
+  pins.forEach(function (p) {
+    var aId = "a:" + p.author, wId = "w:" + p.author + " " + p.work, pId = "p:" + p.id;
+    if (!byId[aId]) addNode({ id: aId, kind: "author", name: p.author, pinCount: pinCountByAuthor[p.author] || 0 });
+    if (!byId[wId]) {
+      var info = workInfo[p.author + " " + p.work] || {};
+      addNode({ id: wId, kind: "work", name: p.work, author: p.author, pinCount: info.pinCount || 0, quoteCount: info.quoteCount || 0 });
+      links.push({ source: byId[aId], target: byId[wId], kind: "aw" });
+    }
+    addNode({ id: pId, kind: "pin", name: p.id, pin: p, author: p.author, work: p.work });
+    links.push({ source: byId[wId], target: byId[pId], kind: "wp" });
+  });
+  nodes.forEach(function (n) {
+    if (n.kind === "author") n.r = 9 + 3 * Math.sqrt(Math.max(1, n.pinCount));
+    else if (n.kind === "work") n.r = 5 + 1.6 * Math.sqrt(Math.max(1, n.pinCount));
+    else n.r = 3.2;
+    n.hue = hueFor(n.author || n.name);
+  });
+
+  var authorCount = nodes.filter(function (n) { return n.kind === "author"; }).length;
+  var workCount = nodes.filter(function (n) { return n.kind === "work"; }).length;
+  document.getElementById("stats").textContent = hasData
+    ? plural(pins.length, "pin") + " · " + plural(authorCount, "author") + " · " + plural(workCount, "work")
+    : "No data file found";
+
+  if (!hasData) {
+    document.getElementById("emptyTitle").textContent = "No data yet";
+    document.getElementById("emptyText").textContent = "data.js was not found next to this page. Open the Web Node from the zeroCortisol menu bar app to generate it.";
+  }
+  if (!pins.length) document.getElementById("empty").classList.add("show");
+
+  // ---------- canvas & view ----------
+  var sky = document.getElementById("sky");
+  var canvas = document.getElementById("canvas");
+  var ctx = canvas.getContext("2d");
+  var W = 0, H = 0, dpr = 1;
+  var view = { x: 0, y: 0, k: 1 };
+
+  // Background stars (deterministic).
+  var dust = [];
+  (function () {
+    var s = 12345;
+    function rnd() { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }
+    for (var i = 0; i < 220; i++) dust.push({ x: rnd(), y: rnd(), r: rnd() * 1.1 + 0.2, a: rnd() * 0.5 + 0.15, t: rnd() * Math.PI * 2 });
+  })();
+
+  function resize() {
+    var rect = sky.getBoundingClientRect();
+    dpr = window.devicePixelRatio || 1;
+    W = Math.max(1, rect.width); H = Math.max(1, rect.height);
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    if (!resize.done) { view.x = W / 2; view.y = H / 2 + 20; resize.done = true; }
+  }
+  window.addEventListener("resize", function () { resize(); requestDraw(); });
+  resize();
+
+  // Seed positions: authors on a ring, works around authors, pins around works.
+  (function seed() {
+    var authors = nodes.filter(function (n) { return n.kind === "author"; });
+    var R = Math.min(W, H) * 0.28 + 20 * Math.sqrt(authors.length);
+    authors.forEach(function (a, i) {
+      var t = (i / Math.max(1, authors.length)) * Math.PI * 2 - Math.PI / 2;
+      a.x = Math.cos(t) * R; a.y = Math.sin(t) * R;
+    });
+    links.forEach(function (l, i) {
+      var t = i * 2.399963; // golden angle
+      var d = l.kind === "aw" ? 70 : 30;
+      l.target.x = (l.source.x || 0) + Math.cos(t) * d;
+      l.target.y = (l.source.y || 0) + Math.sin(t) * d;
+    });
+    nodes.forEach(function (n) { n.vx = 0; n.vy = 0; if (n.x == null) { n.x = 0; n.y = 0; } });
+  })();
+
+  // ---------- force simulation ----------
+  var alpha = 1, alphaMin = 0.002, alphaDecay = 0.0228;
+  function tick() {
+    var i, j, a, b, dx, dy, d2, d, f;
+    var n = nodes.length;
+    // Repulsion (O(n^2); fine for a few hundred pins).
+    for (i = 0; i < n; i++) {
+      a = nodes[i];
+      for (j = i + 1; j < n; j++) {
+        b = nodes[j];
+        dx = b.x - a.x; dy = b.y - a.y;
+        d2 = dx * dx + dy * dy;
+        if (d2 < 0.01) { dx = (Math.random() - 0.5) * 0.1; dy = (Math.random() - 0.5) * 0.1; d2 = 0.01; }
+        var strength = (a.kind === "pin" && b.kind === "pin") ? 60 : (a.kind === "author" && b.kind === "author" ? 2200 : 380);
+        f = strength * alpha / d2;
+        d = Math.sqrt(d2);
+        var minD = a.r + b.r + 6;
+        if (d < minD) f += (minD - d) * 0.05;
+        dx /= d; dy /= d;
+        a.vx -= dx * f; a.vy -= dy * f;
+        b.vx += dx * f; b.vy += dy * f;
+      }
+    }
+    // Springs.
+    links.forEach(function (l) {
+      var rest = l.kind === "aw" ? 95 : 34;
+      var k = l.kind === "aw" ? 0.06 : 0.12;
+      dx = l.target.x - l.source.x; dy = l.target.y - l.source.y;
+      d = Math.sqrt(dx * dx + dy * dy) || 0.001;
+      f = (d - rest) * k * alpha;
+      dx /= d; dy /= d;
+      l.target.vx -= dx * f; l.target.vy -= dy * f;
+      l.source.vx += dx * f * 0.5; l.source.vy += dy * f * 0.5;
+    });
+    // Gentle gravity, damping, integration.
+    for (i = 0; i < n; i++) {
+      a = nodes[i];
+      var g = a.kind === "author" ? 0.012 : 0.004;
+      a.vx -= a.x * g * alpha; a.vy -= a.y * g * alpha;
+      if (a.fixed) { a.vx = 0; a.vy = 0; continue; }
+      a.vx *= 0.6; a.vy *= 0.6;
+      a.x += a.vx; a.y += a.vy;
+    }
+    alpha += (alphaMin - alpha) * alphaDecay;
+  }
+
+  // ---------- drawing ----------
+  var hover = null, selected = null, time = 0;
+
+  function related(n) {
+    if (!n) return null;
+    var set = {}; set[n.id] = true;
+    function down(x) { links.forEach(function (l) { if (l.source === x && !set[l.target.id]) { set[l.target.id] = true; down(l.target); } }); }
+    function up(x) { links.forEach(function (l) { if (l.target === x && !set[l.source.id]) { set[l.source.id] = true; up(l.source); } }); }
+    down(n); up(n);
+    return set;
+  }
+
+  function starPath(x, y, r) {
+    ctx.beginPath();
+    for (var i = 0; i < 8; i++) {
+      var ang = (i / 8) * Math.PI * 2 - Math.PI / 2;
+      var rr = i % 2 === 0 ? r * 2.1 : r * 0.55;
+      ctx.lineTo(x + Math.cos(ang) * rr, y + Math.sin(ang) * rr);
+    }
+    ctx.closePath();
+  }
+
+  function draw() {
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, W, H);
+
+    // Dust stars (screen space) with a slow twinkle.
+    dust.forEach(function (s) {
+      var a = s.a * (reduceMotion ? 1 : 0.75 + 0.25 * Math.sin(time * 0.0012 + s.t));
+      ctx.fillStyle = "rgba(210,225,255," + a.toFixed(3) + ")";
+      ctx.beginPath(); ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2); ctx.fill();
+    });
+
+    ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.x, dpr * view.y);
+    var focus = related(selected || hover);
+
+    links.forEach(function (l) {
+      var on = !focus || (focus[l.source.id] && focus[l.target.id]);
+      ctx.strokeStyle = l.kind === "aw"
+        ? "rgba(241,207,125," + (on ? 0.45 : 0.08) + ")"
+        : "rgba(143,193,255," + (on ? 0.35 : 0.06) + ")";
+      ctx.lineWidth = (l.kind === "aw" ? 1.4 : 0.9) / Math.sqrt(view.k);
+      ctx.beginPath(); ctx.moveTo(l.source.x, l.source.y); ctx.lineTo(l.target.x, l.target.y); ctx.stroke();
+    });
+
+    nodes.forEach(function (n) {
+      var on = !focus || focus[n.id];
+      ctx.globalAlpha = on ? 1 : 0.22;
+      if (n.kind === "author") {
+        var grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r * 3);
+        grd.addColorStop(0, "rgba(241,207,125,0.55)");
+        grd.addColorStop(1, "rgba(241,207,125,0)");
+        ctx.fillStyle = grd;
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r * 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#f1cf7d";
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+      } else if (n.kind === "work") {
+        ctx.fillStyle = "hsl(" + (205 + (n.hue % 30)) + ",90%,78%)";
+        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(3,6,15,0.9)"; ctx.lineWidth = 1.5; ctx.stroke();
+      } else {
+        var tw = reduceMotion ? 1 : 0.85 + 0.15 * Math.sin(time * 0.003 + n.x * 0.05);
+        ctx.fillStyle = "rgba(255,255,255," + tw.toFixed(3) + ")";
+        ctx.shadowColor = "rgba(200,225,255,0.9)"; ctx.shadowBlur = 8;
+        starPath(n.x, n.y, n.r);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+      if (n === selected || n === hover) {
+        ctx.strokeStyle = "rgba(255,255,255,0.85)"; ctx.lineWidth = 1.5 / view.k;
+        ctx.beginPath(); ctx.arc(n.x, n.y, (n.kind === "pin" ? n.r * 2.4 : n.r) + 4, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    });
+
+    // Labels: authors always, works when zoomed in or related to focus.
+    ctx.textAlign = "center";
+    nodes.forEach(function (n) {
+      if (n.kind === "pin") return;
+      var show = n.kind === "author" || view.k > 1.15 || (focus && focus[n.id]);
+      if (!show) return;
+      var on = !focus || focus[n.id];
+      var size = (n.kind === "author" ? 13 : 11) / Math.max(0.8, view.k);
+      ctx.font = (n.kind === "author" ? "600 " : "") + size + "px -apple-system, BlinkMacSystemFont, Helvetica, sans-serif";
+      ctx.fillStyle = n.kind === "author"
+        ? "rgba(248,232,190," + (on ? 0.95 : 0.3) + ")"
+        : "rgba(200,220,250," + (on ? 0.85 : 0.25) + ")";
+      ctx.fillText(truncate(n.name, 34), n.x, n.y - n.r - (n.kind === "author" ? 8 : 5));
+    });
+  }
+
+  var drawQueued = false;
+  function requestDraw() {
+    if (drawQueued) return;
+    drawQueued = true;
+    requestAnimationFrame(frame);
+  }
+  function frame(t) {
+    drawQueued = false;
+    time = t || 0;
+    if (alpha > alphaMin * 1.5) { for (var s = 0; s < 2; s++) tick(); }
+    draw();
+    // Keep animating while the layout settles; afterwards only for the twinkle (unless reduced motion).
+    if (alpha > alphaMin * 1.5 || !reduceMotion) requestDraw();
+  }
+  // Settle most of the layout up front so the first frame is already a readable constellation
+  // (and the page still renders where requestAnimationFrame is throttled).
+  var settleSteps = nodes.length > 400 ? 120 : (reduceMotion ? 400 : 260);
+  for (var s = 0; s < settleSteps; s++) tick();
+  // Fit the settled layout into view.
+  (function fit() {
+    if (!nodes.length) return;
+    var minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(function (n) {
+      minX = Math.min(minX, n.x - n.r); maxX = Math.max(maxX, n.x + n.r);
+      minY = Math.min(minY, n.y - n.r); maxY = Math.max(maxY, n.y + n.r);
+    });
+    var pad = 90;
+    var k = Math.min((W - pad * 2) / Math.max(1, maxX - minX), (H - pad * 2) / Math.max(1, maxY - minY), 1.6);
+    view.k = Math.max(0.3, k);
+    view.x = W / 2 - ((minX + maxX) / 2) * view.k;
+    view.y = H / 2 + 20 - ((minY + maxY) / 2) * view.k;
+  })();
+  draw();
+  requestDraw();
+
+  // ---------- interaction ----------
+  var tooltip = document.getElementById("tooltip");
+  var detail = document.getElementById("detail");
+  var detailBody = document.getElementById("detailBody");
+
+  function toWorld(px, py) { return { x: (px - view.x) / view.k, y: (py - view.y) / view.k }; }
+  function pick(px, py) {
+    var w = toWorld(px, py), best = null, bestD = Infinity;
+    nodes.forEach(function (n) {
+      var hit = Math.max(n.kind === "pin" ? 9 : n.r + 5, 8 / view.k);
+      var dx = n.x - w.x, dy = n.y - w.y, d = Math.sqrt(dx * dx + dy * dy);
+      if (d < hit && d < bestD) { best = n; bestD = d; }
+    });
+    return best;
+  }
+
+  function showTooltip(n, px, py) {
+    if (!n) { tooltip.classList.remove("show"); return; }
+    tooltip.textContent = "";
+    if (n.kind === "author") {
+      tooltip.appendChild(el("div", "kind", "Author"));
+      tooltip.appendChild(el("div", "title", n.name));
+      tooltip.appendChild(el("div", "muted", plural(n.pinCount, "pin")));
+    } else if (n.kind === "work") {
+      tooltip.appendChild(el("div", "kind", "Work"));
+      tooltip.appendChild(el("div", "title", n.name));
+      tooltip.appendChild(el("div", "muted", n.author + " · " + n.pinCount + " of " + plural(n.quoteCount, "quote") + " pinned"));
+    } else {
+      tooltip.appendChild(el("div", "kind", "Pinned quote"));
+      tooltip.appendChild(el("div", null, "“" + truncate(n.pin.text, 160) + "”"));
+      tooltip.appendChild(el("div", "muted", n.author + " — " + n.work));
+    }
+    var rect = sky.getBoundingClientRect();
+    var tw = tooltip.offsetWidth || 240, th = tooltip.offsetHeight || 60;
+    var x = Math.min(px + 14, rect.width - tw - 8), y = py + 14;
+    if (y + th > rect.height - 8) y = py - th - 14;
+    tooltip.style.left = Math.max(8, x) + "px";
+    tooltip.style.top = Math.max(8, y) + "px";
+    tooltip.classList.add("show");
+  }
+
+  function showDetail(n) {
+    selected = n;
+    if (!n) { detail.classList.remove("show"); requestDraw(); return; }
+    detailBody.textContent = "";
+    if (n.kind === "pin") {
+      var p = n.pin;
+      detailBody.appendChild(el("div", "kind", "Pinned quote · " + p.id));
+      detailBody.appendChild(el("blockquote", null, "“" + p.text + "”"));
+      detailBody.appendChild(el("div", "meta", p.author + " — " + p.work + (p.pinnedAt ? " · pinned " + String(p.pinnedAt).slice(0, 10) : "")));
+      var chips = el("div", "chips");
+      (p.tags || []).forEach(function (t) { chips.appendChild(el("span", "chip tag", "#" + t)); });
+      (p.themes || []).forEach(function (t) { chips.appendChild(el("span", "chip", t)); });
+      if (chips.childNodes.length) detailBody.appendChild(chips);
+    } else {
+      detailBody.appendChild(el("div", "kind", n.kind === "author" ? "Author" : "Work · " + n.author));
+      detailBody.appendChild(el("h2", null, n.name));
+      var children = links.filter(function (l) { return l.source === n; }).map(function (l) { return l.target; });
+      detailBody.appendChild(el("div", "meta", n.kind === "author"
+        ? plural(n.pinCount, "pin") + " across " + plural(children.length, "work")
+        : n.pinCount + " of " + plural(n.quoteCount, "quote") + " pinned"));
+      var ul = el("ul");
+      children.forEach(function (c) {
+        ul.appendChild(el("li", null, c.kind === "work" ? c.name : "“" + truncate(c.pin.text, 110) + "”"));
+      });
+      detailBody.appendChild(ul);
+    }
+    detail.classList.add("show");
+    requestDraw();
+  }
+  document.getElementById("closeDetail").addEventListener("click", function () { showDetail(null); });
+
+  var drag = null;
+  function localPoint(e) {
+    var rect = canvas.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+  canvas.addEventListener("pointerdown", function (e) {
+    var p = localPoint(e), n = pick(p.x, p.y);
+    canvas.setPointerCapture(e.pointerId);
+    drag = { node: n, start: p, last: p, moved: false };
+    if (n) { n.fixed = true; alpha = Math.max(alpha, 0.25); }
+    canvas.classList.add("dragging");
+  });
+  canvas.addEventListener("pointermove", function (e) {
+    var p = localPoint(e);
+    if (drag) {
+      var dx = p.x - drag.last.x, dy = p.y - drag.last.y;
+      if (Math.abs(p.x - drag.start.x) + Math.abs(p.y - drag.start.y) > 3) drag.moved = true;
+      if (drag.node) {
+        var w = toWorld(p.x, p.y);
+        drag.node.x = w.x; drag.node.y = w.y;
+        alpha = Math.max(alpha, 0.2);
+      } else {
+        view.x += dx; view.y += dy;
+      }
+      drag.last = p;
+      tooltip.classList.remove("show");
+      requestDraw();
+      return;
+    }
+    var n = pick(p.x, p.y);
+    if (n !== hover) { hover = n; requestDraw(); }
+    canvas.classList.toggle("pointing", !!n);
+    showTooltip(n, p.x, p.y);
+  });
+  function endDrag(e) {
+    if (!drag) return;
+    var p = localPoint(e);
+    if (drag.node) drag.node.fixed = false;
+    if (!drag.moved) showDetail(pick(p.x, p.y));
+    drag = null;
+    canvas.classList.remove("dragging");
+  }
+  canvas.addEventListener("pointerup", endDrag);
+  canvas.addEventListener("pointercancel", endDrag);
+  canvas.addEventListener("pointerleave", function () { if (!drag) { hover = null; showTooltip(null); requestDraw(); } });
+  canvas.addEventListener("wheel", function (e) {
+    e.preventDefault();
+    var p = localPoint(e);
+    var factor = Math.exp(-e.deltaY * 0.0015);
+    var k = Math.min(4, Math.max(0.3, view.k * factor));
+    view.x = p.x - (p.x - view.x) * (k / view.k);
+    view.y = p.y - (p.y - view.y) * (k / view.k);
+    view.k = k;
+    requestDraw();
+  }, { passive: false });
+  window.addEventListener("keydown", function (e) { if (e.key === "Escape") showDetail(null); });
+})();
+</script>
+</body>
+</html>
