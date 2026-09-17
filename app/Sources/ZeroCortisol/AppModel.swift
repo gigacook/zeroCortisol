@@ -172,6 +172,17 @@ final class AppModel {
         let firstToday = UserDefaults.standard.string(forKey: Self.luckyIntroDayKey) != today
         guard let url = exportWebNode(showTruthIntro: firstToday) else { return }
         if firstToday { UserDefaults.standard.set(today, forKey: Self.luckyIntroDayKey) }
+        // The page's action bar logs today through the same path as the menu bar tracker.
+        // A day that's already locked stays locked.
+        WebNodePanel.shared.onLog = { [weak self] mood, sleep, strength, stillness in
+            guard let self else { return nil }
+            self.refresh()
+            if self.todayLog == nil {
+                self.saveToday(mood: mood, sleep: sleep, strength: strength, stillness: stillness)
+            }
+            guard let log = self.todayLog else { return nil }
+            return LogReply(composite: log.composite, streak: self.streak, total: self.total)
+        }
         WebNodePanel.shared.show(url)
     }
 
