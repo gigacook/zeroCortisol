@@ -36,7 +36,7 @@ struct PanelView: View {
                 Button {
                     model.openWebNode()
                 } label: {
-                    Label("Web Node", systemImage: "sparkles")
+                    Label("I am lucky", systemImage: "sparkles")
                 }
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }

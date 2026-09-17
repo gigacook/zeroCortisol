@@ -151,19 +151,27 @@ final class AppModel {
 
     // MARK: - Web node
 
+    /// UserDefaults key holding the day key of the last "I am lucky" Truth reveal.
+    private static let luckyIntroDayKey = "luckyIntroShownDay"
+
     /// Writes data.js + index.html into Application Support and returns the page URL.
-    func exportWebNode() -> URL? {
+    func exportWebNode(showTruthIntro: Bool = false) -> URL? {
         guard let store else { return nil }
         var url: URL?
         attempt {
-            url = try WebExport.export(store: store, indexHTML: resources.webIndex, to: AppPaths.webDirectory)
+            url = try WebExport.export(store: store, indexHTML: resources.webIndex, to: AppPaths.webDirectory,
+                                       showTruthIntro: showTruthIntro)
         }
         return url
     }
 
-    /// Exports the constellation page and shows it full screen.
+    /// "I am lucky": the first open of the day reveals today's Truth full screen,
+    /// then continues to the constellation. Later opens that day go straight to it.
     func openWebNode() {
-        guard let url = exportWebNode() else { return }
+        let today = DayKey.today()
+        let firstToday = UserDefaults.standard.string(forKey: Self.luckyIntroDayKey) != today
+        guard let url = exportWebNode(showTruthIntro: firstToday) else { return }
+        if firstToday { UserDefaults.standard.set(today, forKey: Self.luckyIntroDayKey) }
         WebNodePanel.shared.show(url)
     }
 

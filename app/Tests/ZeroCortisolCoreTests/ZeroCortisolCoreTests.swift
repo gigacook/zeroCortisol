@@ -267,6 +267,10 @@ private func logs(start: String, composites: [Int]) -> [DailyLog] {
 
         let payload = try WebExport.payload(from: store)
         #expect(payload.pins.count == 1)
+        #expect(payload.truth != nil)
+        #expect(payload.truth?.id == (try store.truthOfDay(payload.today))?.id)
+        #expect(payload.showTruthIntro == false)
+        #expect(try WebExport.payload(from: store, showTruthIntro: true).showTruthIntro)
         #expect(payload.authors.contains { $0.pinCount == 1 })
         #expect(!payload.recommendations.isEmpty)
     }

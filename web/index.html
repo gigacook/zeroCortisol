@@ -187,6 +187,53 @@
   .data .keys i { display: inline-block; width: 14px; height: 2px; margin-right: 6px; vertical-align: middle; }
   .data .keys i.dash { background: none; border-top: 2px dashed; height: 0; }
 
+  /* ---------- I am lucky: today's Truth, before the constellation ---------- */
+  .lucky {
+    position: fixed; inset: 0; z-index: 20; display: none;
+    flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 24px;
+    background:
+      radial-gradient(1px 1px at 12% 18%, rgba(255,255,255,.55), transparent),
+      radial-gradient(1px 1px at 78% 12%, rgba(255,255,255,.4), transparent),
+      radial-gradient(1.5px 1.5px at 62% 72%, rgba(255,255,255,.35), transparent),
+      radial-gradient(1px 1px at 28% 84%, rgba(255,255,255,.4), transparent),
+      radial-gradient(1px 1px at 90% 48%, rgba(255,255,255,.35), transparent),
+      radial-gradient(ellipse at 50% 120%, #1c1740 0, transparent 60%),
+      var(--sea-0);
+    transition: opacity 700ms ease;
+  }
+  .lucky.show { display: flex; }
+  .lucky.leaving { opacity: 0; pointer-events: none; }
+  .lucky .eye {
+    background: none; border: 0; padding: 12px; cursor: pointer; border-radius: 50%; color: var(--gold);
+    transition: transform 300ms ease;
+  }
+  .lucky .eye:hover { transform: scale(1.06); }
+  .lucky .eye:focus-visible { outline: 1px solid var(--gold); outline-offset: 4px; }
+  .lucky .lid { transition: transform 500ms ease; }
+  .lucky .pupil { transition: transform 500ms ease, opacity 400ms ease; transform-origin: 50px 58px; transform: scaleY(0); opacity: 0; }
+  .lucky .eye.open .pupil { transform: scaleY(1); opacity: 1; }
+  .lucky .eye.open .lid-top { transform: translateY(-9px); }
+  .lucky .eye.open .lid-bottom { transform: translateY(9px); }
+  .lucky .prompt { margin-top: 8px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-3); }
+  .lucky .date { margin: 28px 0 12px; font-size: 11px; letter-spacing: 0.24em; color: var(--ink-3); }
+  .lucky figure, .lucky .onward { opacity: 0; transform: translateY(8px); transition: opacity 800ms ease 200ms, transform 800ms ease 200ms; }
+  .lucky .onward { transition-delay: 700ms; }
+  .lucky.revealed figure, .lucky.revealed .onward { opacity: 1; transform: none; }
+  .lucky figure { margin: 0; max-width: 700px; }
+  .lucky blockquote {
+    margin: 0; font-family: var(--serif); font-style: italic; font-size: clamp(22px, 3.4vw, 34px); line-height: 1.38; color: var(--ink);
+  }
+  .lucky figcaption { margin-top: 18px; font-family: var(--serif); font-size: 19px; color: var(--gold); }
+  .lucky figcaption cite { display: block; margin-top: 2px; font-size: 16px; color: var(--ink-2); }
+  .lucky .onward {
+    margin-top: 34px; font: 12px var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink);
+    background: transparent; border: 1px solid var(--panel-border); border-radius: 999px; padding: 10px 18px; cursor: pointer;
+  }
+  .lucky .onward:hover, .lucky .onward:focus-visible { border-color: var(--gold); color: var(--gold); outline: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .lucky, .lucky * { transition: none !important; }
+  }
+
   @media (max-width: 760px) {
     body { overflow: auto; }
     .layout { grid-template-columns: 1fr; grid-template-rows: 70vh auto; height: auto; }
@@ -216,7 +263,7 @@
     <div class="empty" id="empty">
       <div>
         <h2 id="emptyTitle">No stars yet</h2>
-        <p id="emptyText">Pin a Truth of the Day from the menu bar and open the Web Node again. Each pin becomes a star, linked to its work and author.</p>
+        <p id="emptyText">Pin a Truth of the Day from the menu bar and press I am lucky again. Each pin becomes a star, linked to its work and author.</p>
       </div>
     </div>
     <div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
@@ -240,6 +287,27 @@
     <div id="dataBody"></div>
   </section>
 </div>
+<section class="lucky" id="lucky" aria-label="Truth of the Day">
+  <button class="eye" id="luckyEye" aria-label="Open the eye to reveal today's Truth" aria-expanded="false">
+    <svg width="140" height="140" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <path d="M50 8 L94 88 L6 88 Z" opacity=".5"/>
+      <path class="lid lid-top" d="M22 58 Q50 44 78 58"/>
+      <path class="lid lid-bottom" d="M22 58 Q50 72 78 58"/>
+      <g class="pupil">
+        <ellipse cx="50" cy="58" rx="28" ry="12" stroke-width="1.5"/>
+        <circle cx="50" cy="58" r="7" fill="currentColor"/>
+      </g>
+    </svg>
+  </button>
+  <div class="prompt" id="luckyPrompt">click the eye</div>
+  <div class="date" id="luckyDate"></div>
+  <figure aria-live="polite">
+    <blockquote id="luckyQuote"></blockquote>
+    <figcaption><span id="luckyAuthor"></span><cite id="luckyWork"></cite></figcaption>
+  </figure>
+  <button class="onward" id="luckyOnward" tabindex="-1">Continue to your constellation &rarr;</button>
+</section>
+
 <div class="hint" aria-hidden="true"><kbd>esc</kbd> exit &nbsp;·&nbsp; <kbd>d</kbd> data</div>
 
 <script src="data.js"></script>
@@ -805,9 +873,51 @@
   }
   dataVeil.addEventListener("click", function (e) { if (e.target === dataVeil) toggleData(false); });
 
+  // ---------- I am lucky: first open of the day reveals today's Truth ----------
+  var lucky = document.getElementById("lucky");
+  var luckyEye = document.getElementById("luckyEye");
+  var luckyOnward = document.getElementById("luckyOnward");
+  var luckyActive = !!(DATA.showTruthIntro && DATA.truth);
+
+  function luckyReveal() {
+    if (lucky.classList.contains("revealed")) return;
+    luckyEye.classList.add("open");
+    luckyEye.setAttribute("aria-expanded", "true");
+    document.getElementById("luckyPrompt").textContent = "";
+    lucky.classList.add("revealed");
+    luckyOnward.tabIndex = 0;
+    setTimeout(function () { luckyOnward.focus({ preventScroll: true }); }, reduceMotion ? 0 : 900);
+  }
+
+  function luckyContinue() {
+    if (!luckyActive) return;
+    luckyActive = false;
+    lucky.classList.add("leaving");
+    setTimeout(function () { lucky.classList.remove("show"); }, reduceMotion ? 0 : 700);
+  }
+
+  if (luckyActive) {
+    var t = DATA.truth;
+    document.getElementById("luckyQuote").textContent = "\u201C" + t.text + "\u201D";
+    document.getElementById("luckyAuthor").textContent = "\u2014 " + t.author;
+    document.getElementById("luckyWork").textContent = t.work;
+    var parts = String(DATA.today || "").split("-").map(Number);
+    if (parts.length === 3 && parts.every(isFinite)) {
+      document.getElementById("luckyDate").textContent = new Date(parts[0], parts[1] - 1, parts[2])
+        .toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" }).toUpperCase();
+    }
+    lucky.classList.add("show");
+    luckyEye.addEventListener("click", luckyReveal);
+    luckyOnward.addEventListener("click", luckyContinue);
+    luckyEye.focus({ preventScroll: true });
+  }
+
   window.addEventListener("keydown", function (e) {
     if (e.metaKey || e.ctrlKey || e.altKey) return;
-    if (e.key === "d" || e.key === "D") { e.preventDefault(); toggleData(); }
+    if (e.key === "d" || e.key === "D") {
+      if (luckyActive) return; // the data overlay waits until you're past the Truth
+      e.preventDefault(); toggleData();
+    }
     else if (e.key === "Escape") { toggleData(false); showDetail(null); }
   });
 })();

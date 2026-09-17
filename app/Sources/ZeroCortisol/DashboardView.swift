@@ -50,9 +50,9 @@ struct DashboardView: View {
                 Button {
                     model.openWebNode()
                 } label: {
-                    Label("Web Node", systemImage: "sparkles")
+                    Label("I am lucky", systemImage: "sparkles")
                 }
-                .help("Open the constellation of your pins")
+                .help("Today's Truth, then the constellation of your pins")
             }
         }
         .onAppear { model.refresh() }

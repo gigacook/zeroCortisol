@@ -44,7 +44,18 @@ public struct WebPayload: Codable, Sendable {
         public let projection: [Point]
     }
 
+    /// Today's Truth, shown full screen before the constellation on the first open of the day.
+    public struct TruthNode: Codable, Sendable {
+        public let id: String
+        public let text: String
+        public let author: String
+        public let work: String
+    }
+
     public let generatedAt: String
+    public let today: String
+    public let truth: TruthNode?
+    public let showTruthIntro: Bool
     public let pins: [PinNode]
     public let authors: [AuthorNode]
     public let works: [WorkNode]
@@ -56,7 +67,7 @@ public struct WebPayload: Codable, Sendable {
 }
 
 public enum WebExport {
-    public static func payload(from store: Store, now: Date = Date()) throws -> WebPayload {
+    public static func payload(from store: Store, now: Date = Date(), showTruthIntro: Bool = false) throws -> WebPayload {
         let pins = try store.pins(.all).map {
             WebPayload.PinNode(id: $0.quote.id, text: $0.quote.text, author: $0.quote.author, work: $0.quote.work,
                                themes: $0.quote.themes, tags: $0.tags.map(\.name), pinnedAt: $0.pinnedAt)
@@ -76,8 +87,13 @@ public enum WebExport {
         }
         let trajectory = WebPayload.TrajectoryNode(actual: points(result.actual), smoothed: points(result.smoothed),
                                                    projection: points(result.projection))
+        let today = DayKey.key(for: now)
+        let truth = try store.truthOfDay(today).map {
+            WebPayload.TruthNode(id: $0.id, text: $0.text, author: $0.author, work: $0.work)
+        }
         let formatter = ISO8601DateFormatter()
-        return WebPayload(generatedAt: formatter.string(from: now), pins: pins, authors: authors, works: works,
+        return WebPayload(generatedAt: formatter.string(from: now), today: today, truth: truth,
+                          showTruthIntro: showTruthIntro && truth != nil, pins: pins, authors: authors, works: works,
                           recommendations: try store.recommendations(), logs: rows, trajectory: trajectory,
                           streak: try store.streak(today: DayKey.key(for: now)), total: logs.count)
     }
@@ -92,10 +108,10 @@ public enum WebExport {
 
     /// Writes `data.js` and a fresh copy of `index.html` into `directory`; returns the index URL.
     @discardableResult
-    public static func export(store: Store, indexHTML: URL, to directory: URL) throws -> URL {
+    public static func export(store: Store, indexHTML: URL, to directory: URL, showTruthIntro: Bool = false) throws -> URL {
         let fm = FileManager.default
         try fm.createDirectory(at: directory, withIntermediateDirectories: true)
-        let js = try javascript(for: try payload(from: store))
+        let js = try javascript(for: try payload(from: store, showTruthIntro: showTruthIntro))
         try js.write(to: directory.appendingPathComponent("data.js"), atomically: true, encoding: .utf8)
         let target = directory.appendingPathComponent("index.html")
         if fm.fileExists(atPath: target.path) { try fm.removeItem(at: target) }

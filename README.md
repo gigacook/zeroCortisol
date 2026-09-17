@@ -38,7 +38,7 @@ Streak: 12 | Total: 40
 
 **A forgiving trajectory.** Good days pull your trend line up fast. Bad days barely dent it. One rough Tuesday isn't a pattern.
 
-**Your constellation.** Hit *Web Node* and your pins become stars in a dark sea: authors → works → the lines you kept. A sidebar hands you posters of the books you haven't touched yet from the thinkers you pin most.
+**Your constellation.** Hit *I am lucky*: the first time each day, today's Truth rises full screen behind an opening eye, then your pins become stars in a dark sea: authors → works → the lines you kept. A sidebar hands you posters of the books you haven't touched yet from the thinkers you pin most.
 
 ## 🔺 Get it
 
