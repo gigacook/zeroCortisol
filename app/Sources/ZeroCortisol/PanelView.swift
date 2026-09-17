@@ -5,7 +5,6 @@ import ZeroCortisolCore
 struct PanelView: View {
     @Bindable var model: AppModel
     @Environment(\.openWindow) private var openWindow
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -35,7 +34,7 @@ struct PanelView: View {
                     Label("Dashboard", systemImage: "chart.xyaxis.line")
                 }
                 Button {
-                    if let url = model.exportWebNode() { openURL(url) }
+                    model.openWebNode()
                 } label: {
                     Label("Web Node", systemImage: "sparkles")
                 }

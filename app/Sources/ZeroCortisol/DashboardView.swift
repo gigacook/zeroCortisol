@@ -33,7 +33,6 @@ enum ChartPalette {
 
 struct DashboardView: View {
     @Bindable var model: AppModel
-    @Environment(\.openURL) private var openURL
 
     var body: some View {
         TabView {
@@ -49,7 +48,7 @@ struct DashboardView: View {
         .toolbar {
             ToolbarItem {
                 Button {
-                    if let url = model.exportWebNode() { openURL(url) }
+                    model.openWebNode()
                 } label: {
                     Label("Web Node", systemImage: "sparkles")
                 }
