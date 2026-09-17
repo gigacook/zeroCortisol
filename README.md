@@ -93,3 +93,9 @@ rm -rf ~/Applications/ZeroCortisol.app
 No account, no cloud, no analytics. Everything lives in one SQLite file on your Mac. Clearing your browser won't touch it.
 
 <sub>Quotes are verbatim from public-domain translations. The app is unsigned: if macOS complains, right-click → Open.</sub>
+
+## ☕ Support
+
+Free, like the philosophers intended (Diogenes lived in a barrel). If your cortisol dropped even a little, you can buy me a coffee:
+
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/gigacook)
